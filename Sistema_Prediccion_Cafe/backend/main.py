@@ -1,16 +1,19 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import sqlite3
 import os
 
 app = FastAPI(title="Sistema de Predicción de Calidad de Café")
 
-# --- RUTAS ABSOLUTAS (importantes para Render) ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Carpeta backend/
+# --- RUTAS ABSOLUTAS ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # .../backend/
 DB_PATH = os.path.join(BASE_DIR, "sistema_cafe.db")
+# Los HTML están en frontend/ (no en frontend/src/)
 FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
+# Las imágenes están en frontend/src/
+IMAGES_DIR = os.path.join(BASE_DIR, "..", "frontend", "src")
 
 def inicializar_db():
     conn = sqlite3.connect(DB_PATH)
@@ -95,28 +98,21 @@ def obtener_historial():
 
 # --- SERVIR FRONTEND ---
 
-# Ruta raíz: redirige a login
 @app.get("/")
 def root():
-    login_path = os.path.join(FRONTEND_DIR, "src", "login.html")
-    with open(login_path, "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
+    return FileResponse(os.path.join(FRONTEND_DIR, "login.html"))
 
-# Servir archivos estáticos (imágenes, CSS, etc.)
-app.mount("/src", StaticFiles(directory=os.path.join(FRONTEND_DIR, "src")), name="static")
-
-# Servir cada HTML individualmente
 @app.get("/login.html")
 def login_html():
-    with open(os.path.join(FRONTEND_DIR, "src", "login.html"), "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
+    return FileResponse(os.path.join(FRONTEND_DIR, "login.html"))
 
 @app.get("/predictor.html")
 def predictor_html():
-    with open(os.path.join(FRONTEND_DIR, "src", "predictor.html"), "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
+    return FileResponse(os.path.join(FRONTEND_DIR, "predictor.html"))
 
 @app.get("/historial.html")
 def historial_html():
-    with open(os.path.join(FRONTEND_DIR, "src", "historial.html"), "r", encoding="utf-8") as f:
-        return HTMLResponse(content=f.read())
+    return FileResponse(os.path.join(FRONTEND_DIR, "historial.html"))
+
+# Servir imágenes (logo.png, imagen.png) desde /src/
+app.mount("/src", StaticFiles(directory=IMAGES_DIR), name="static")
