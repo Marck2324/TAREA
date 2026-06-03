@@ -10,7 +10,7 @@ app = FastAPI(title="Sistema de Predicción de Calidad de Café")
 # --- RUTAS ABSOLUTAS ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # .../backend/
 DB_PATH = os.path.join(BASE_DIR, "sistema_cafe.db")
-# Los HTML están en frontend/ (no en frontend/src/)
+# Los HTML están en frontend/ (NO en frontend/src/)
 FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
 # Las imágenes están en frontend/src/
 IMAGES_DIR = os.path.join(BASE_DIR, "..", "frontend", "src")
@@ -100,7 +100,8 @@ def obtener_historial():
 
 @app.get("/")
 def root():
-    return FileResponse(os.path.join(FRONTEND_DIR, "login.html"))
+    login_path = os.path.join(FRONTEND_DIR, "login.html")
+    return FileResponse(login_path)
 
 @app.get("/login.html")
 def login_html():
@@ -114,5 +115,5 @@ def predictor_html():
 def historial_html():
     return FileResponse(os.path.join(FRONTEND_DIR, "historial.html"))
 
-# Servir imágenes (logo.png, imagen.png) desde /src/
+# Servir imágenes desde /src/
 app.mount("/src", StaticFiles(directory=IMAGES_DIR), name="static")
