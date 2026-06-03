@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Historial de Auditoría - Calidad de Café</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #F8F9FA; margin: 0; padding: 20px; }
+        .nav-bar { background: #2C3E50; padding: 15px; display: flex; gap: 20px; border-radius: 8px; margin-bottom: 25px; }
+        .nav-bar a { color: white; text-decoration: none; font-weight: bold; font-size: 15px; }
+        .container { max-width: 900px; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin: 0 auto; }
+        h3 { color: #34495E; margin-top: 0; border-bottom: 2px solid #ECF0F1; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #EFEFEF; }
+        th { background-color: #EAECEE; color: #34495E; font-weight: bold; }
+        tr:hover { background-color: #F9EBEA; }
+        .badge-calidad { font-weight: bold; color: #2980B9; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-bar">
+            <a href="predictor.html">Módulo Predictivo</a>
+            <a href="historial.html" style="border-bottom: 2px solid #2980B9; padding-bottom:2px;">Historial de Auditoría</a>
+        </div>
+
+        <h3>Historial General de Predicciones</h3>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha / Hora</th>
+                    <th>Operador</th>
+                    <th>Variedad</th>
+                    <th>Pts Taza</th>
+                    <th>Calidad Determina (IA)</th>
+                </tr>
+            </thead>
+            <tbody id="tablaHistorial">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        async function cargarHistorial() {
+            try {
+                // Hacemos la petición a la API unificada
+                const response = await fetch('/api/historial');
+                if (response.ok) {
+                    const datos = await response.json();
+                    const tbody = document.getElementById('tablaHistorial');
+                    tbody.innerHTML = ''; // Limpiamos la tabla antes de renderizar
+
+                    // Creamos una fecha por defecto para los registros
+                    const fechaActual = new Date().toLocaleDateString('es-PE', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    datos.forEach(registro => {
+                        const fila = document.createElement('tr');
+                        
+                        // Mapeamos las llaves exactas que configuramos en el backend (main.py)
+                        fila.innerHTML = `
+                            <td>${fechaActual}</td>
+                            <td>${registro.usuario || 'admin'}</td>
+                            <td>${registro.variedad}</td>
+                            <td><strong>${registro.puntaje.toFixed(2)}</strong></td>
+                            <td class="badge-calidad">${registro.calidad.toUpperCase()}</td>
+                        `;
+                        tbody.appendChild(fila);
+                    });
+                } else {
+                    console.error('Error al obtener datos del servidor');
+                }
+            } catch (error) {
+                console.error('Error de conexión con la API:', error);
+            }
+        }
+
+        // Ejecutar la función automáticamente al cargar la ventana
+        window.onload = cargarHistorial;
+    </script>
+</body>
+</html>
