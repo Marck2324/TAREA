@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Módulo Predictivo de Calidad</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #F8F9FA; margin: 0; padding: 20px; }
+        .nav-bar { background: #2C3E50; padding: 15px; display: flex; gap: 20px; border-radius: 8px; margin-bottom: 25px; }
+        .nav-bar a { color: white; text-decoration: none; font-weight: bold; font-size: 15px; }
+        .container { max-width: 800px; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin: 0 auto; }
+        h3 { color: #34495E; margin-top: 0; border-bottom: 2px solid #ECF0F1; padding-bottom: 10px; }
+        .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        .form-group { display: flex; flex-direction: column; }
+        label { font-weight: bold; margin-bottom: 8px; color: #2C3E50; font-size: 14px; }
+        input, select { padding: 10px; border: 1px solid #BDC3C7; border-radius: 6px; font-size: 14px; box-sizing: border-box; width: 100%; }
+        .full-width { grid-column: span 2; }
+        button { padding: 14px; background-color: #2980B9; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        button:hover { background-color: #1F618D; }
+        .card-resultado { margin-top: 25px; padding: 20px; background-color: #EAFAF1; border: 1px solid #2ECC71; border-radius: 8px; text-align: center; display: none; }
+        .card-resultado h4 { margin: 0; color: #7F8C8D; font-size: 12px; letter-spacing: 1px; }
+        .card-resultado p { margin: 10px 0 0 0; font-size: 20px; font-weight: bold; color: #27AE60; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav-bar">
+            <a href="predictor.html" style="border-bottom: 2px solid #2980B9; padding-bottom:2px;">Módulo Predictivo</a>
+            <a href="historial.html">Historial de Auditoría</a>
+        </div>
+
+        <h3>Análisis Predictivo de Lotes</h3>
+        
+        <div class="grid-form">
+            <div class="form-group">
+                <label>Altitud de Cultivo (msnm):</label>
+                <input type="number" id="txtAltitud" placeholder="Ej: 1650">
+            </div>
+            <div class="form-group">
+                <label>Variedad del Grano (ComboBox):</label>
+                <select id="cmbVariedad">
+                    <option>Arábica</option>
+                    <option>Catuaí</option>
+                    <option>Geisha</option>
+                    <option>Caturra</option>
+                    <option>Bourbon</option>
+                    <option>Catimor</option>
+                    <option>Typica</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Porcentaje de Humedad (%):</label>
+                <input type="number" step="0.01" id="txtHumedad" placeholder="Ej: 11.5">
+            </div>
+            <div class="form-group">
+                <label>Status de Certificación (ComboBox):</label>
+                <select id="cmbStatus">
+                    <option>Orgánico</option>
+                    <option>Convencional</option>
+                </select>
+            </div>
+            <div class="form-group full-width">
+                <label>Puntaje de Taza Obtenido:</label>
+                <input type="number" step="0.01" id="txtPuntaje" placeholder="Ej: 88.5">
+            </div>
+            
+            <button type="button" class="full-width" id="btnCalcular">Calcular Calidad del Café</button>
+        </div>
+
+        <div class="card-resultado" id="boxResultado">
+            <h4>CALIDAD DETERMINADA POR IA</h4>
+            <p id="lblCalidad">---</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('btnCalcular').addEventListener('click', async function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const userActivo = localStorage.getItem('usuarioCafe') || 'admin';
+            const altRaw = document.getElementById('txtAltitud').value;
+            const humRaw = document.getElementById('txtHumedad').value;
+            const ptsRaw = document.getElementById('txtPuntaje').value;
+
+            if(!altRaw || !humRaw || !ptsRaw) {
+                alert('Por favor complete todos los valores numéricos.');
+                return false;
+            }
+
+            
+            const datos = {
+                usuario: userActivo,
+                altitud: parseFloat(altRaw),
+                humedad: parseFloat(humRaw),
+                variedad: document.getElementById('cmbVariedad').value,
+                status: document.getElementById('cmbStatus').value,
+                puntaje: parseFloat(ptsRaw)
+            };
+
+            try {
+                // Usamos ruta relativa porque compartimos el servidor en el puerto 8000
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                });
+
+                if(response.ok) {
+                    const res = await response.json();
+                    
+                   
+                    document.getElementById('lblCalidad').innerText = res.calidad.toUpperCase();
+                    document.getElementById('boxResultado').style.display = 'block';
+                } else {
+                    alert('Error en los rangos de procesamiento del servidor.');
+                }
+            } catch (error) {
+                alert('No se pudo establecer comunicación con el backend.');
+            }
+            
+            return false;
+        });
+    </script>
+</body>
+</html>
