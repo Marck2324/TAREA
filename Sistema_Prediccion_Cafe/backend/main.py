@@ -1,18 +1,20 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import sqlite3
 import os
 
 app = FastAPI(title="Sistema de Predicción de Calidad de Café")
 
-
-DB_PATH = "sistema_cafe.db"
+# --- RUTAS ABSOLUTAS (importantes para Render) ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # Carpeta backend/
+DB_PATH = os.path.join(BASE_DIR, "sistema_cafe.db")
+FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
 
 def inicializar_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    # Aseguramos la existencia de la tabla con la estructura correcta
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS historial (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,10 +30,9 @@ def inicializar_db():
     conn.commit()
     conn.close()
 
-# Inicializamos la base de datos al encender el servidor
 inicializar_db()
 
-# --- MODELOS DE DATOS (SCHEMAS) ---
+# --- MODELOS ---
 class LoginSchema(BaseModel):
     username: str
     password: str
@@ -42,9 +43,9 @@ class PredictSchema(BaseModel):
     variedad: str
     humedad: float
     status: str
-    puntaje: float  
+    puntaje: float
 
-# --- RUTAS DE LA API ---
+# --- RUTAS API ---
 
 @app.post("/api/login")
 def login(datos: LoginSchema):
@@ -54,7 +55,6 @@ def login(datos: LoginSchema):
 
 @app.post("/api/predict")
 def predict(datos: PredictSchema):
-    
     if datos.puntaje >= 85.0:
         resultado_calidad = "Taza de Excelencia"
     elif datos.puntaje >= 80.0:
@@ -62,27 +62,19 @@ def predict(datos: PredictSchema):
     else:
         resultado_calidad = "Café Comercial / Estándar"
     
-    # Inserción explícita en el historial de SQLite
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO historial (usuario, altitud, variedad, humedad, status, puntaje, calidad)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            datos.usuario, 
-            datos.altitud, 
-            datos.variedad, 
-            datos.humedad, 
-            datos.status, 
-            datos.puntaje,        # Guarda el puntaje numérico de la taza
-            resultado_calidad     # Guarda la etiqueta predictiva final
-        ))
+        """, (datos.usuario, datos.altitud, datos.variedad, 
+              datos.humedad, datos.status, datos.puntaje, resultado_calidad))
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"Error crítico al guardar en SQLite: {e}")
-        raise HTTPException(status_code=500, detail="No se pudo registrar en el historial")
+        print(f"Error al guardar: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo registrar")
 
     return {"calidad": resultado_calidad}
 
@@ -94,23 +86,37 @@ def obtener_historial():
         cursor.execute("SELECT usuario, altitud, variedad, humedad, status, puntaje, calidad FROM historial ORDER BY id DESC")
         filas = cursor.fetchall()
         conn.close()
-        
-        historial_json = []
-        for f in filas:
-            historial_json.append({
-                "usuario": f[0],
-                "altitud": f[1],
-                "variedad": f[2],
-                "humedad": f[3],
-                "status": f[4],
-                "puntaje": f[5],
-                "calidad": f[6]
-            })
-        return historial_json
+        return [{"usuario": f[0], "altitud": f[1], "variedad": f[2], 
+                 "humedad": f[3], "status": f[4], "puntaje": f[5], "calidad": f[6]} 
+                for f in filas]
     except Exception as e:
-        print(f"Error al leer la base de datos: {e}")
+        print(f"Error: {e}")
         return []
 
-# --- SERVIDORES DE ARCHIVOS ESTÁTICOS (FRONTEND) ---
-# Esta línea va estrictamente al final para no interferir con las rutas de la API
-app.mount("/", StaticFiles(directory="../frontend", html=True), name="frontend")
+# --- SERVIR FRONTEND ---
+
+# Ruta raíz: redirige a login
+@app.get("/")
+def root():
+    login_path = os.path.join(FRONTEND_DIR, "src", "login.html")
+    with open(login_path, "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
+
+# Servir archivos estáticos (imágenes, CSS, etc.)
+app.mount("/src", StaticFiles(directory=os.path.join(FRONTEND_DIR, "src")), name="static")
+
+# Servir cada HTML individualmente
+@app.get("/login.html")
+def login_html():
+    with open(os.path.join(FRONTEND_DIR, "src", "login.html"), "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
+
+@app.get("/predictor.html")
+def predictor_html():
+    with open(os.path.join(FRONTEND_DIR, "src", "predictor.html"), "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
+
+@app.get("/historial.html")
+def historial_html():
+    with open(os.path.join(FRONTEND_DIR, "src", "historial.html"), "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
